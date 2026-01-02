@@ -1,3 +1,6 @@
+
+[![Frontend CI](https://github.com/EMarc2023/RAG_LLM_microservices_frontend/actions/workflows/CI.yml/badge.svg)](https://github.com/EMarc2023/RAG_LLM_microservices_frontend/actions/workflows/CI.yml)
+
 # React + TypeScript + Vite
 
 This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
