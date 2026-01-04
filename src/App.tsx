@@ -1,7 +1,7 @@
-import{ useState, useEffect, useRef } from 'react';
-import axios from 'axios';
+import { useState, useEffect, useRef } from 'react';
+import axios, { CanceledError } from 'axios';
 import ReactMarkdown from 'react-markdown';
-import { Send, Bot, User, Sparkles, Database, Loader2, Command} from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Command, XCircle, Trash2, Download } from 'lucide-react';
 
 interface Message {
   role: 'user' | 'ai';
@@ -14,8 +14,10 @@ export default function App() {
   const [chat, setChat] = useState<Message[]>([]);
   const [isTyping, setIsTyping] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Feature: AbortController (The "Stop" button logic)
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  // Auto-scroll to bottom whenever chat updates
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chat, isTyping]);
@@ -23,6 +25,9 @@ export default function App() {
   const askAI = async () => {
     if (!input.trim() || isTyping) return;
 
+    // Initialize the kill switch
+    abortControllerRef.current = new AbortController();
+    
     const userMsg: Message = { role: 'user', content: input };
     setChat((prev) => [...prev, userMsg]);
     const currentQuery = input;
@@ -30,130 +35,160 @@ export default function App() {
     setIsTyping(true);
 
     try {
-      console.log("Sending query to Orchestrator:", currentQuery);
-      
-      // Adjust the URL and payload as per the backend API
-      const response = await axios.post('http://localhost:8002/ask_ai', { 
-        query: currentQuery 
-      });
+      const response = await axios.post('http://localhost:8002/ask_ai', 
+        { query: currentQuery },
+        { signal: abortControllerRef.current.signal } // Link signal to axios
+      );
 
-      console.log("Full Backend Response:", response.data);
-
-      // LOGIC CHECK: Ensure these keys match your Python @app.post return statement
       const aiMsg: Message = { 
         role: 'ai', 
-        content: response.data.ai_answer || response.data.response || "No answer key found in JSON", 
-        context: response.data.context_used || "No context provided"
+        content: response.data.ai_answer || "No response found", 
+        context: response.data.context_used
       };
       
       setChat((prev) => [...prev, aiMsg]);
     } catch (err: unknown) {
-      
-      if (err instanceof Error) {
-      console.error("Error message:", err.message); // Accessing the message property safely
+      if (err instanceof CanceledError) {
+        setChat((prev) => [...prev, { role: 'ai', content: '_Request cancelled by user._' }]);
       } else {
-      console.error("Connection Error Details:", err);
+        setChat((prev) => [...prev, { role: 'ai', content: `⚠️ Error: ${err instanceof Error ? err.message : 'Unknown error'}` }]);
       }
-      
-      setChat((prev) => [...prev, { 
-        role: 'ai', 
-        content: `⚠️ Error: ${err}. Check browser console (F12) for details.` 
-      }]);
     } finally {
       setIsTyping(false);
+      abortControllerRef.current = null;
     }
   };
 
+  // FEATURE: Stop Button Logic
+  const stopGeneration = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
+  // FEATURE: Reset Logic
+  const resetChat = () => {
+    if (confirm("Clear all messages and input?")) {
+      setChat([]);
+      setInput('');
+    }
+  };
+
+  // FEATURE: Export Logic
+  const exportHistory = () => {
+    const historyText = chat.map(m => `${m.role.toUpperCase()}: ${m.content}`).join('\n\n');
+    const blob = new Blob([historyText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `rag_history_${new Date().getTime()}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="min-h-screen bg-[#0B0F1A] text-slate-200 font-sans flex flex-col">
-      {/* Header */}
+    <div className="min-h-screen bg-[#F3F3F3] text-slate-900 font-sans p-8 md:p-16">      
+    {/* Header */}
       <nav className="border-b border-slate-800 bg-[#0B0F1A]/80 backdrop-blur-md sticky top-0 z-10 w-full">
         <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2 font-bold text-xl tracking-tight">
             <div className="bg-blue-600 p-1.5 rounded-lg"><Command size={20} className="text-white"/></div>
             <span>RAG<span className="text-blue-500">LAB</span></span>
           </div>
-          <div className="hidden md:flex items-center gap-4 text-xs text-slate-400 font-mono">
-            <span className="flex items-center gap-1"><Database size={12}/> PORT: 8002</span>
-            <span className="flex items-center gap-1 text-green-500"><Sparkles size={12}/> ONLINE</span>
+          <div className="flex items-center gap-4">
+            <button onClick={resetChat} className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition">
+              <Trash2 size={14}/> Reset
+            </button>
+            <button onClick={exportHistory} className="text-xs text-slate-400 hover:text-white flex items-center gap-1 transition">
+              <Download size={14}/> Export .txt
+            </button>
           </div>
         </div>
       </nav>
 
-      {/* Chat Messages */}
-      <main className="flex-1 max-w-3xl w-full mx-auto py-8 px-6 overflow-y-auto">
-        {chat.length === 0 && (
-          <div className="text-center py-20 animate-in fade-in duration-700">
-            <div className="inline-flex p-4 rounded-full bg-blue-500/10 mb-4 text-blue-500">
-              <Bot size={40} />
+      {/* Main Container: Top Input Layout */}
+      <div className="max-w-4xl w-full mx-auto flex flex-col flex-1 p-6 gap-6">
+        
+        {/* 1. TOP: Input Bar */}
+        <div className="bg-slate-800/50 border border-slate-700 rounded-2xl p-4 shadow-xl">
+          <div className="relative">
+            <textarea 
+              className="w-full bg-transparent border-none focus:ring-0 text-white placeholder:text-slate-500 resize-none min-h-[80px]"
+              placeholder="Type your query..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), askAI())}
+              disabled={isTyping}
+            />
+            <div className="flex justify-end mt-2">
+              {isTyping ? (
+                <button 
+                  onClick={stopGeneration}
+                  className="flex items-center gap-2 px-6 py-2 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition-all animate-pulse"
+                >
+                  <XCircle size={18} /> Stop
+                </button>
+              ) : (
+                <button 
+                  onClick={askAI}
+                  disabled={!input.trim()}
+                  className="flex items-center gap-2 px-8 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl font-bold transition-all active:scale-95 disabled:opacity-30 disabled:cursor-not-allowed"
+                >
+                  <Send size={18} /> Ask AI
+                </button>
+              )}
             </div>
-            <h2 className="text-2xl font-bold text-white mb-2">Knowledge base active</h2>
-            <p className="text-slate-500 text-sm">Ask me anything about the stored documents.</p>
           </div>
-        )}
+        </div>
 
-        <div className="space-y-6">
-          {chat.map((msg, i) => (
-            <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2 duration-300`}>
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
-                msg.role === 'ai' ? 'bg-blue-600/20 border-blue-500/30 text-blue-400' : 'bg-slate-700 border-slate-600 text-slate-300'
-              }`}>
-                {msg.role === 'ai' ? <Bot size={16}/> : <User size={16}/>}
-              </div>
-              
-              <div className={`flex flex-col gap-2 max-w-[80%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed shadow-sm ${
-                  msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800 border border-slate-700 text-slate-200 rounded-tl-none'
-                }`}>
-                  <div className="prose prose-invert prose-sm max-w-none">
-                    <ReactMarkdown>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-                </div>
-                
-                {msg.context && (
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-slate-500 bg-slate-900 px-2 py-1 rounded border border-slate-800">
-                    <Database size={10}/> SOURCES: {msg.context}
-                  </div>
-                )}
-              </div>
-            </div>
-          ))}
-          
-          {isTyping && (
-            <div className="flex gap-4 items-center text-slate-500 text-xs animate-pulse">
-              <div className="w-8 h-8 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center">
-                <Loader2 size={14} className="animate-spin text-blue-500"/>
-              </div>
-              <span>Searching vector database...</span>
+        {/* 2. MIDDLE: Progress Indicator */}
+        <div className={`h-1 w-full bg-slate-800 rounded-full overflow-hidden transition-opacity duration-300 ${isTyping ? 'opacity-100' : 'opacity-0'}`}>
+          <div className="h-full bg-blue-500 animate-progress-stripes w-full"></div>
+        </div>
+
+        {/* 3. BOTTOM: Response Area (Fills space) */}
+        <main className="flex-1 bg-slate-900/30 border border-slate-800 rounded-2xl p-6 overflow-y-auto mb-4 relative">
+          {chat.length === 0 && !isTyping && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-600">
+              <Sparkles size={48} className="mb-4 opacity-20" />
+              <p>Knowledge base ready. Ask your first question above.</p>
             </div>
           )}
-          <div ref={scrollRef} />
-        </div>
-      </main>
 
-      {/* Input Bar */}
-      <div className="p-6 bg-gradient-to-t from-[#0B0F1A] via-[#0B0F1A] to-transparent sticky bottom-0">
-        <div className="max-w-3xl mx-auto relative group">
-          <input 
-            className="w-full bg-slate-800/80 border border-slate-700 rounded-xl py-4 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all text-white placeholder:text-slate-500 backdrop-blur-xl"
-            placeholder="Type your query..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && askAI()}
-          />
-          <button 
-            onClick={askAI}
-            disabled={isTyping}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Send size={18} />
-          </button>
-        </div>
-        <p className="text-[10px] text-center text-slate-600 mt-3 uppercase tracking-widest font-medium">
-          Powered by TinyLlama-1.1B • Local RAG Engine
-        </p>
+          <div className="space-y-6">
+            {chat.map((msg, i) => (
+              <div key={i} className={`flex gap-4 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'} animate-in slide-in-from-bottom-2 duration-300`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 border ${
+                  msg.role === 'ai' ? 'bg-blue-600/20 border-blue-500/30 text-blue-400' : 'bg-slate-700 border-slate-600 text-slate-300'
+                }`}>
+                  {msg.role === 'ai' ? <Bot size={16}/> : <User size={16}/>}
+                </div>
+                
+                <div className={`flex flex-col gap-2 max-w-[85%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  <div className={`px-5 py-3 rounded-2xl text-sm leading-relaxed ${
+                    msg.role === 'user' ? 'bg-blue-600 text-white rounded-tr-none' : 'bg-slate-800/80 border border-slate-700 text-slate-200 rounded-tl-none shadow-lg'
+                  }`}>
+                    <div className="prose prose-invert prose-sm max-w-none">
+                      <ReactMarkdown>{msg.content}</ReactMarkdown>
+                    </div>
+                  </div>
+                  {msg.context && (
+                    <div className="text-[10px] font-mono text-slate-500 bg-slate-900/50 px-2 py-1 rounded border border-slate-800">
+                      SOURCES: {msg.context}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex gap-4 items-center text-slate-500 text-xs italic">
+                <Loader2 size={14} className="animate-spin text-blue-500"/>
+                <span>AI is searching the vector database...</span>
+              </div>
+            )}
+            <div ref={scrollRef} />
+          </div>
+        </main>
       </div>
     </div>
   );
