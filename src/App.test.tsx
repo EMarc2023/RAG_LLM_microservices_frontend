@@ -28,7 +28,7 @@ describe('RAG Assistant UI Tests', () => {
   it('updates input value when user types', async () => {
     const user = userEvent.setup();
     render(<App />);
-    const input = screen.getByPlaceholderText(/Type your question here/i) as HTMLTextAreaElement;
+    const input = screen.getByPlaceholderText(/know/i) as HTMLTextAreaElement;
     
     await user.type(input, 'What is FastAPI?');
     expect(input.value).toBe('What is FastAPI?');
@@ -40,7 +40,7 @@ describe('RAG Assistant UI Tests', () => {
     (axios.post as any).mockReturnValue(new Promise(() => {}));
 
     render(<App />);
-    const input = screen.getByPlaceholderText(/Type your question here/i);
+    const input = screen.getByPlaceholderText(/What would you like to know/i);
     const askButton = screen.getByRole('button', { name: /ask ai/i });
 
     fireEvent.change(input, { target: { value: 'What is RAG?' } });
@@ -63,7 +63,7 @@ describe('RAG Assistant UI Tests', () => {
 
   it('Reset button clears the textarea', async () => {
     render(<App />);
-    const input = screen.getByPlaceholderText(/Type your question here/i) as HTMLTextAreaElement;
+    const input = screen.getByPlaceholderText(/know/i) as HTMLTextAreaElement;
     const resetButton = screen.getByText(/reset/i);
 
     fireEvent.change(input, { target: { value: 'Some random text' } });
