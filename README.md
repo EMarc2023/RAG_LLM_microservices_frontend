@@ -62,7 +62,8 @@ docker run -d -p 4173:4173 rag-frontend-ui
 and then open ```http://localhost:4173``` on the web browser.
 
 # Related repositories:
-Backend: https://github.com/EMarc2023/RAG_LLM_microservices
-Desktop client: https://github.com/EMarc2023/RAG_LLM_microservices_desktop 
+Backend (Python/FastAPI): https://github.com/EMarc2023/RAG_LLM_microservices
+
+Desktop client (C#/.NET 10): https://github.com/EMarc2023/RAG_LLM_microservices_desktop 
 
 
