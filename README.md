@@ -1,76 +1,68 @@
 
 [![Frontend CI](https://github.com/EMarc2023/RAG_LLM_microservices_frontend/actions/workflows/CI.yml/badge.svg)](https://github.com/EMarc2023/RAG_LLM_microservices_frontend/actions/workflows/CI.yml)
 
-# React + TypeScript + Vite
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+# 🤖 RAG Assistant
+### Generative AI Chatbot with Local LLM Integration
 
-Currently, two official plugins are available:
+A modern, high-performance Retrieval-Augmented Generation (RAG) interface built with **React**, **TypeScript**, and **Tailwind CSS v4**. This application is designed to interface with a local **TinyLlama 1.1B** model to provide intelligent, context-aware responses.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## React Compiler
+## ✨ Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+* **Modern UI/UX**: A clean, minimalist interface featuring a layered `#F3F3F3` background and floating content cards.
+* **Micro-Interactions**: Hover scales, tactile button "squish" effects, and smooth transitions for a premium feel.
+* **Interactive Chat**: Real-time response rendering with **Markdown support** (bolding, lists, and code blocks).
+* **Source Transparency**: Displays specific document sources used by the AI to generate answers.
+* **Utility Tools**: One-click conversation reset and chat history export (.txt).
+* **Responsive Design**: Fully optimised for mobile, tablet, and desktop viewing.
 
-## Expanding the ESLint configuration
+---
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## 🛠️ Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+* **Frontend**: React 18 + Vite
+* **Language**: TypeScript
+* **Styling**: Tailwind CSS v4 (with `@tailwindcss/postcss`)
+* **Icons**: Lucide React
+* **AI Engine**: TinyLlama 1.1B
+* **Testing**: Vitest + React Testing Library
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+---
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## 🚀 Getting Started
+
+### Prerequisites
+* [Node.js](https://nodejs.org/) (v18 or higher)
+* [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+
+# Building and deploying the app
+
+## Local build
+
+```PowerShell
+npm run build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Click the link on the terminal to access the frontend UI.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Docker build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+To build, run
+
+```bash
+docker build --no-cache -t rag-frontend-ui
 ```
+
+To access the frontend UI, run
+```bash
+docker run -d -p 4173:4173 rag-frontend-ui
+```
+and then open ```http://localhost:4173``` on the web browser.
+
+# Related repositories:
+Backend: https://github.com/EMarc2023/RAG_LLM_microservices
+Desktop client: https://github.com/EMarc2023/RAG_LLM_microservices_desktop 
+
+
